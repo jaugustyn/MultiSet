@@ -43,8 +43,8 @@ namespace ClassLibraryMultiSet
 
         // kopiuje elementy multizbioru do tablicy, od wskazanego indeksu
         public void CopyTo (T[] array, int arrayIndex);
-
         */
+        
 
         // --- from IEnumerable<T> --------------------------
 
