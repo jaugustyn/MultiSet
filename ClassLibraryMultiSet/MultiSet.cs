@@ -9,31 +9,36 @@ namespace ClassLibraryMultiSet
     public class MultiSet<T>: IMultiSet<T>, IEnumerable<T>
     {
         // wewnetrzna reprezentacja danych
-        private Dictionary<T, int> mset = new Dictionary<T, int>();
+        private Dictionary<T, int> mset;
 
         #region Constructors
-        public MultiSet() { }
 
-        // Konstruktor, tworzy pusty multizbiór, w którym równość elementów zdefiniowana jest
-        // za pomocą obiektu `comparer`
-        public MultiSet(IEqualityComparer<T> comparer) // TODO
+        public MultiSet()
         {
-            // comparer.Equals(this);
+            mset = new Dictionary<T, int>();
         }
         
-        public MultiSet(IEnumerable<T> sequence)
+        public MultiSet(IEqualityComparer<T> comparer)
+        {
+            mset = new Dictionary<T, int>(comparer);
+        }
+
+        public MultiSet(IEnumerable<T> sequence): this()
         {
             foreach (var item in sequence.Distinct().ToList())
             {
                 mset.Add(item, sequence.Count(x => x.Equals(item)));
             }
         }
-
-        // Konstruktor, tworzy multizbiór wczytując wszystkie elementy z `sequence`
-        // Równośc elementów zdefiniowana jest za pomocą obiektu `comparer`
-        public MultiSet(IEnumerable<T> sequence, IEqualityComparer<T> comparer): this(sequence)
+        
+        public MultiSet(IEnumerable<T> sequence, IEqualityComparer<T> comparer)
         {
-            // comparer.Equals(sequence);
+            mset = new Dictionary<T, int>(comparer);
+            
+            foreach (var item in sequence.Distinct().ToList())
+            {
+                mset.Add(item, sequence.Count(x => x.Equals(item)));
+            }
         }
 
         #endregion
@@ -54,6 +59,7 @@ namespace ClassLibraryMultiSet
                 msetEnum.MoveNext();
             }
         }
+        int ICollection<T>.Count => Count();
 
         #endregion
 
@@ -68,6 +74,8 @@ namespace ClassLibraryMultiSet
 
             return str.Length == 0 ? null : str.ToString(0, str.Length - 2);
         }
+        public static IMultiSet<T> Empty => new MultiSet<T>();
+
         public IMultiSet<T> Add(T item, int numberOfItems = 1)
         {
             if (mset.ContainsKey(item))
@@ -79,10 +87,11 @@ namespace ClassLibraryMultiSet
         }
         public IMultiSet<T> Remove(T item, int numberOfItems = 1)
         {
+            if (IsReadOnly) throw new NotSupportedException();
             if (mset.ContainsKey(item) == false) return this;
 
-            if (mset[item] < numberOfItems)
-                Remove(item);
+            if (mset[item] <= numberOfItems)
+                RemoveAll(item);
             else
                 mset[item] -= numberOfItems;
 
@@ -90,11 +99,12 @@ namespace ClassLibraryMultiSet
         }
         public IMultiSet<T> RemoveAll(T item)
         {
+            if (IsReadOnly) throw new NotSupportedException();
             if (mset.ContainsKey(item) == false) return this;
-            Remove(item);
+            
+            mset.Remove(item);
             return this;
         }
-        int ICollection<T>.Count => Count();
         public int this[T item]
         {
             get
@@ -106,7 +116,7 @@ namespace ClassLibraryMultiSet
 
         #endregion
         
-        public IEqualityComparer<T> Comparer => mset.Comparer; // to check
+        public IEqualityComparer<T> Comparer => mset.Comparer;
 
         public IReadOnlyDictionary<T, int> AsDictionary() => mset.ToDictionary(x => x.Key, x => x.Value);
         public IReadOnlySet<T> AsSet() => mset.Keys.ToHashSet();
@@ -114,7 +124,7 @@ namespace ClassLibraryMultiSet
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         public IEnumerator<T> GetEnumerator() => new MultiSetEnumerator(mset);
         
-        public IMultiSet<T> ExceptWith(IEnumerable<T> other) // to check
+        public IMultiSet<T> ExceptWith(IEnumerable<T> other)
         {
             if (this.IsReadOnly == true)
                 throw new NotSupportedException();
@@ -216,6 +226,57 @@ namespace ClassLibraryMultiSet
                 throw new ArgumentNullException();
 
             return other.Any(item => this.Contains(item));
+        }
+        
+        public static IMultiSet<T> operator +(MultiSet<T> first, MultiSet<T> second)
+        {
+            if (first is null || second is null)
+                throw new ArgumentNullException();
+
+            var newMs = new MultiSet<T>(first);
+
+            foreach (var item in second)
+                newMs.Add(item);
+
+            return newMs;
+        }
+        
+        public static IMultiSet<T> operator -(MultiSet<T> first, MultiSet<T> second)
+        {
+            if (first is null || second is null)
+                throw new ArgumentNullException();
+
+            var newMs = new MultiSet<T>(first);
+
+            foreach (var item in second)
+                newMs.Remove(item, 1);
+
+            return newMs;
+        }
+
+        // tworzy nowy multizbiór jako część wspólną multizbiorów `first` oraz `second`
+        // zwraca `ArgumentNullException`, jeśli którykolwiek z parametrów jest `null`
+        public static IMultiSet<T> operator *(MultiSet<T> first, MultiSet<T> second)
+        {
+            if (first is null || second is null)
+                throw new ArgumentNullException();
+
+            var newMs = new MultiSet<T>(first);
+
+            foreach (var item in second.Distinct().ToList())
+                if (newMs.Contains(item))
+                {
+                    while (newMs[item] > second[item])
+                        newMs.Remove(item, 1);
+                }
+
+            foreach (var item in newMs.Distinct().ToList())
+            {
+                if (second.Contains(item) == false)
+                    newMs.RemoveAll(item);
+            }
+
+            return newMs;
         }
 
         public class MultiSetEnumerator : IEnumerator<T>

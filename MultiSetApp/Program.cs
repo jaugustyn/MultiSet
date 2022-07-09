@@ -47,10 +47,10 @@ namespace MultiSetApp
             Console.WriteLine();
 
 
-            var ms2 = new MultiSet<char>() {{'a',3}, 'v', 'i', 'x', 'b', 'd'};
+            var ms2 = new MultiSet<char>() {{'a',5}, {'v',2}, 'i', 'x', 'b'};
             var ms3 = new MultiSet<char>() { 'v',{ 'a', 3 }, 'i', 'x', 'b', 'd' };
             var list = new List<char>() {'a', 'a', 'a', 'v', 'i', 'x', 'b', 'd', 'a'};
-            char[] arr = new[] {'a', 'a', 'a', 'v', 'i', 'x', 'b', 'd', 'a'};
+            char[] arr = new[] {'a', 'a', 'a', 'v','v','v', 'i', 'x', 'b', 'd', 'a'};
             // Console.WriteLine(ms.ExceptWith(ms2));
             // Console.WriteLine(ms.IntersectWith(ms2));
             // Console.WriteLine(ms.UnionWith(ms2));
@@ -63,6 +63,14 @@ namespace MultiSetApp
             {
                 Console.WriteLine(VARIABLE);
             }
+
+
+            var test = new MultiSet<char>(arr, comparer: null);
+            
+            var t2 = test * ms2;
+            Console.WriteLine(t2);
+            Console.WriteLine(test);
+            Console.WriteLine(ms2);
         }
     }
 }
