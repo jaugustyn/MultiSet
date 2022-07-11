@@ -320,10 +320,8 @@ namespace ClassLibraryMultiSet
                 return x.mset == y.mset;
             }
 
-            public int GetHashCode(MultiSet<T> obj)
-            {
-                return obj.mset != null ? obj.mset.GetHashCode() : 0;
-            }
+            public int GetHashCode(MultiSet<T> obj) => obj.mset != null ? obj.mset.GetHashCode() : 0;
+            
         }
 
         #endregion
