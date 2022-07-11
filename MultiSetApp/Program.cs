@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using ClassLibraryMultiSet;
 
 namespace MultiSetApp
@@ -27,8 +26,8 @@ namespace MultiSetApp
             Console.WriteLine(ms['b']);
             Console.WriteLine(ms['d']);
 
-            char[] array = new char[ms.Count() + 10];
-            ms.CopyTo(array, 2);
+            char[] array = new char[15];
+            ms.CopyTo(array, 3);
             foreach (var c in array)
             {
                 Console.Write(c + "|");
@@ -46,11 +45,11 @@ namespace MultiSetApp
             }
             Console.WriteLine();
 
-
             var ms2 = new MultiSet<char>() {{'a',5}, {'v',2}, 'i', 'x', 'b'};
             var ms3 = new MultiSet<char>() { 'v',{ 'a', 3 }, 'i', 'x', 'b', 'd' };
             var list = new List<char>() {'a', 'a', 'a', 'v', 'i', 'x', 'b', 'd', 'a'};
             char[] arr = new[] {'a', 'a', 'a', 'v','v','v', 'i', 'x', 'b', 'd', 'a'};
+            
             // Console.WriteLine(ms.ExceptWith(ms2));
             // Console.WriteLine(ms.IntersectWith(ms2));
             // Console.WriteLine(ms.UnionWith(ms2));
@@ -61,9 +60,9 @@ namespace MultiSetApp
             var msZListy = new MultiSet<char>(arr);
             foreach (var VARIABLE in msZListy)
             {
-                Console.WriteLine(VARIABLE);
+                Console.Write(VARIABLE + " ");
             }
-
+            Console.WriteLine();
 
             var test = new MultiSet<char>(arr, comparer: null);
             

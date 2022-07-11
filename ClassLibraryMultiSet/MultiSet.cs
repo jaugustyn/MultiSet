@@ -6,10 +6,9 @@ using System.Text;
 
 namespace ClassLibraryMultiSet
 {
-    public class MultiSet<T>: IMultiSet<T>, IEnumerable<T>
+    public class MultiSet<T>: IMultiSet<T>
     {
-        // wewnetrzna reprezentacja danych
-        private Dictionary<T, int> mset;
+        private readonly Dictionary<T, int> mset;
 
         #region Constructors
 
@@ -17,12 +16,10 @@ namespace ClassLibraryMultiSet
         {
             mset = new Dictionary<T, int>();
         }
-        
         public MultiSet(IEqualityComparer<T> comparer)
         {
             mset = new Dictionary<T, int>(comparer);
         }
-
         public MultiSet(IEnumerable<T> sequence): this()
         {
             foreach (var item in sequence.Distinct().ToList())
@@ -30,7 +27,6 @@ namespace ClassLibraryMultiSet
                 mset.Add(item, sequence.Count(x => x.Equals(item)));
             }
         }
-        
         public MultiSet(IEnumerable<T> sequence, IEqualityComparer<T> comparer)
         {
             mset = new Dictionary<T, int>(comparer);
@@ -44,28 +40,69 @@ namespace ClassLibraryMultiSet
         #endregion
 
         #region ICollections
+        
         public void Add(T item) => Add(item, 1);
         public bool Remove(T item) => mset.Remove(item);
         public bool IsReadOnly => false;
         public int Count() => mset.Values.Sum();
         public void Clear() => mset.Clear();
         public bool Contains(T item) => mset.ContainsKey(item);
-        public void CopyTo(T[] array, int arrayIndex) // To check
+        public void CopyTo(T[] array, int arrayIndex)
         {
-            var msetEnum = mset.GetEnumerator();
-            for (int i = 0; i < Count(); i++)
-            {
-                array[arrayIndex + i] = msetEnum.Current.Key;
-                msetEnum.MoveNext();
-            }
+            if (array.Length < arrayIndex + Count())
+                throw new IndexOutOfRangeException("Array is too small");
+
+            int i = 0;
+            foreach (var item in this)
+                array[arrayIndex + i++] = item;
         }
         int ICollection<T>.Count => Count();
 
         #endregion
 
+        #region IEnumerable
+        
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        public IEnumerator<T> GetEnumerator() => new MultiSetEnumerator(mset);
+        public class MultiSetEnumerator : IEnumerator<T>
+        {
+            private readonly T[] _data;
+            private int _currentIndex = -1;
+            public MultiSetEnumerator(Dictionary<T, int> mset)
+            {
+                _data = new T[mset.Sum(x => x.Value)];
+                var index = 0;
+
+                foreach (KeyValuePair<T, int> item in mset)
+                {
+                    for (int i = 0; i < item.Value; i++)
+                    {
+                        _data[index] = item.Key;
+                        index++;
+                    }
+                }
+            }
+            public T Current => _data[_currentIndex];
+            object IEnumerator.Current => _data[_currentIndex];
+            public void Dispose() { }
+            public bool MoveNext()
+            {
+                if (_currentIndex + 1 != _data.Length)
+                {
+                    _currentIndex++;
+                    return true;
+                }
+                return false;
+            }
+            public void Reset() => _currentIndex = -1;
+
+        }
+        #endregion
+
         #region IMultiSet
 
         public bool IsEmpty => mset.Count == 0;
+        public IEqualityComparer<T> Comparer => mset.Comparer;
         public override string ToString()
         {
             var str = new StringBuilder();
@@ -74,8 +111,16 @@ namespace ClassLibraryMultiSet
 
             return str.Length == 0 ? null : str.ToString(0, str.Length - 2);
         }
+        public int this[T item]
+        {
+            get
+            {
+                if (mset.ContainsKey(item) == false) return 0;
+                return mset[item];
+            }
+        }
+        
         public static IMultiSet<T> Empty => new MultiSet<T>();
-
         public IMultiSet<T> Add(T item, int numberOfItems = 1)
         {
             if (mset.ContainsKey(item))
@@ -105,25 +150,10 @@ namespace ClassLibraryMultiSet
             mset.Remove(item);
             return this;
         }
-        public int this[T item]
-        {
-            get
-            {
-                if (mset.ContainsKey(item) == false) return 0;
-                return mset[item];
-            }
-        }
-
-        #endregion
-        
-        public IEqualityComparer<T> Comparer => mset.Comparer;
 
         public IReadOnlyDictionary<T, int> AsDictionary() => mset.ToDictionary(x => x.Key, x => x.Value);
         public IReadOnlySet<T> AsSet() => mset.Keys.ToHashSet();
 
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        public IEnumerator<T> GetEnumerator() => new MultiSetEnumerator(mset);
-        
         public IMultiSet<T> ExceptWith(IEnumerable<T> other)
         {
             if (this.IsReadOnly == true)
@@ -131,10 +161,10 @@ namespace ClassLibraryMultiSet
             if (other is null)
                 throw new ArgumentNullException();
 
-            foreach (var item in this)
+            foreach (var item in this.Distinct().ToList())
             {
                 if (other.Contains(item))
-                    this.Remove(item);
+                    this.RemoveAll(item);
             }
 
             return this;
@@ -146,10 +176,10 @@ namespace ClassLibraryMultiSet
             if (other is null)
                 throw new ArgumentNullException();
 
-            foreach (var item in this)
+            foreach (var item in this.Distinct().ToList())
             {
                 if (!other.Contains(item))
-                    this.Remove(item);
+                    this.RemoveAll(item);
             }
 
             return this;
@@ -163,7 +193,7 @@ namespace ClassLibraryMultiSet
             
             foreach (var item in other)
             {
-                this.Add(item);
+                this.Add(item, 1);
             }
 
             return this;
@@ -175,12 +205,12 @@ namespace ClassLibraryMultiSet
             if (other is null)
                 throw new ArgumentNullException();
 
-            foreach (var item in other)
+            foreach (var item in other.Distinct().ToList())
             {
                 if (this.Contains(item))
-                    this.Remove(item);
+                    this.RemoveAll(item);
                 else
-                    this.Add(item);
+                    this.Add(item, 1);
             }
 
             return this;
@@ -240,7 +270,6 @@ namespace ClassLibraryMultiSet
 
             return newMs;
         }
-        
         public static IMultiSet<T> operator -(MultiSet<T> first, MultiSet<T> second)
         {
             if (first is null || second is null)
@@ -253,9 +282,6 @@ namespace ClassLibraryMultiSet
 
             return newMs;
         }
-
-        // tworzy nowy multizbiór jako część wspólną multizbiorów `first` oraz `second`
-        // zwraca `ArgumentNullException`, jeśli którykolwiek z parametrów jest `null`
         public static IMultiSet<T> operator *(MultiSet<T> first, MultiSet<T> second)
         {
             if (first is null || second is null)
@@ -279,39 +305,9 @@ namespace ClassLibraryMultiSet
             return newMs;
         }
 
-        public class MultiSetEnumerator : IEnumerator<T>
-        {
-            private readonly T[] _data;
-            private int _currentIndex = -1;
-            public MultiSetEnumerator(Dictionary<T, int> mset)
-            {
-                _data = new T[mset.Sum(x => x.Value)];
-                var index = 0;
+        #endregion
 
-                foreach (KeyValuePair<T, int> item in mset)
-                {
-                    for (int i = 0; i < item.Value; i++)
-                    {
-                        _data[index] = item.Key;
-                        index++;
-                    }
-                }
-            }
-            public T Current => _data[_currentIndex];
-            object IEnumerator.Current => _data[_currentIndex];
-            public void Dispose() { }
-            public bool MoveNext()
-            {
-                if (_currentIndex + 1 != _data.Length)
-                {
-                    _currentIndex++;
-                    return true;
-                }
-                return false;
-            }
-            public void Reset() => _currentIndex = -1;
-            
-        }
+        #region Other
 
         public class MultiSetComparer : IEqualityComparer<MultiSet<T>>
         {
@@ -329,5 +325,7 @@ namespace ClassLibraryMultiSet
                 return obj.mset != null ? obj.mset.GetHashCode() : 0;
             }
         }
+
+        #endregion
     }
 }
